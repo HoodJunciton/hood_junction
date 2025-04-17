@@ -42,6 +42,14 @@ src/main/resources/application-*.yml
 !src/main/resources/application.properties
 !src/main/resources/application.yml
 
+# Firebase credentials and test files
+src/main/resources/firebase-service-account.json
+firebase_phone_auth_test.html
+firebase_phone_auth_simplified.html
+server_otp_test.html
+firebase_phone_auth.html
+*.firebase.config.js
+
 # Logs
 logs/
 *.log
@@ -63,3 +71,12 @@ Thumbs.db
 *.swo
 *~
 .env
+.env.*
+
+# Postman collections (may contain sensitive information)
+*.postman_collection.json
+*.postman_environment.json
+
+# Generated JWT tokens or other auth files
+*.token
+auth_tokens.txt

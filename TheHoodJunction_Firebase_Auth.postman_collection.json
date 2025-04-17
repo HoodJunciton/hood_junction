@@ -1,0 +1,174 @@
+{
+	"info": {
+		"_postman_id": "f8a43b5e-6c7d-4e5a-8a9c-e9f2a0d12345",
+		"name": "TheHoodJunction Firebase Auth",
+		"description": "A collection for testing Firebase authentication endpoints for The Hood Junction application.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Email/Google Authentication",
+			"item": [
+				{
+					"name": "Authenticate with Firebase (Email/Google)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"idToken\": \"{{firebase_id_token}}\",\n    \"authProvider\": \"google\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/firebase/authenticate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"firebase",
+								"authenticate"
+							]
+						},
+						"description": "Authenticates a user with Firebase using an ID token from Google or Email sign-in."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for Email and Google authentication using Firebase."
+		},
+		{
+			"name": "Phone Authentication",
+			"item": [
+				{
+					"name": "Send OTP",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phoneNumber\": \"+919876543210\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/otp/firebase/send",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"otp",
+								"firebase",
+								"send"
+							]
+						},
+						"description": "Initiates the OTP process for a phone number. Note that the actual OTP sending is handled by Firebase on the client side."
+					},
+					"response": []
+				},
+				{
+					"name": "Verify OTP (Mock)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phoneNumber\": \"+919876543210\",\n    \"verificationCode\": \"123456\",\n    \"verificationId\": \"verification-id-from-client\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/otp/firebase/verify",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"otp",
+								"firebase",
+								"verify"
+							]
+						},
+						"description": "Mock endpoint for testing OTP verification. In a real implementation, verification is done on the client side with Firebase SDK."
+					},
+					"response": []
+				},
+				{
+					"name": "Verify OTP with Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"idToken\": \"{{firebase_id_token}}\",\n    \"authProvider\": \"phone\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/otp/firebase/verify-token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"otp",
+								"firebase",
+								"verify-token"
+							]
+						},
+						"description": "Verifies an OTP for a phone number using the Firebase ID token after successful verification on the client side."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for phone number authentication using Firebase."
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Store JWT token from response",
+					"if (pm.response.code === 200 && pm.response.json().token) {",
+					"    pm.environment.set(\"jwt_token\", pm.response.json().token);",
+					"    console.log(\"JWT token stored in environment variable: jwt_token\");",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080/api",
+			"type": "string"
+		},
+		{
+			"key": "firebase_id_token",
+			"value": "your-firebase-id-token",
+			"type": "string"
+		}
+	]
+}

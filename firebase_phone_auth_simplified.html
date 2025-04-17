@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Phone Auth - Simplified Test</title>
+    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #4285F4; margin-top: 0; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; }
+        input, button, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; }
+        button {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        button:hover { background-color: #3367D6; }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #4285F4;
+        }
+        .hidden { display: none; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Firebase Phone Auth - Simplified Test</h1>
+        
+        <div class="form-group">
+            <label for="apiKey">API Key:</label>
+            <input type="text" id="apiKey" placeholder="Enter Firebase API Key">
+        </div>
+        <div class="form-group">
+            <label for="authDomain">Auth Domain:</label>
+            <input type="text" id="authDomain" placeholder="Enter Firebase Auth Domain">
+        </div>
+        <div class="form-group">
+            <label for="projectId">Project ID:</label>
+            <input type="text" id="projectId" placeholder="Enter Firebase Project ID">
+        </div>
+        <button onclick="initializeFirebase()">Initialize Firebase</button>
+        
+        <div id="auth-section" class="hidden">
+            <h2>Backend Authentication Test</h2>
+            <div class="form-group">
+                <label for="phoneNumber">Phone Number:</label>
+                <input type="tel" id="phoneNumber" placeholder="+919876543210">
+            </div>
+            <button onclick="testBackendAuth()">Test Backend Authentication</button>
+            
+            <div id="result" class="result hidden"></div>
+        </div>
+        
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        // Global variables
+        let firebaseConfig = null;
+        let firebaseApp = null;
+        let auth = null;
+        
+        // Logging function
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        // Initialize Firebase
+        function initializeFirebase() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const authDomain = document.getElementById('authDomain').value.trim();
+            const projectId = document.getElementById('projectId').value.trim();
+            
+            if (!apiKey || !authDomain || !projectId) {
+                log('Please fill in all Firebase configuration fields', 'error');
+                return;
+            }
+            
+            firebaseConfig = {
+                apiKey: apiKey,
+                authDomain: authDomain,
+                projectId: projectId,
+                storageBucket: `${projectId}.appspot.com`,
+                messagingSenderId: "1015968456254", // Replace with your actual messagingSenderId
+                appId: "1:1015968456254:web:1a4b6f8c9d6e7f8a5b4c3d" // Replace with your actual appId
+            };
+            
+            try {
+                firebaseApp = firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                
+                log('Firebase initialized successfully', 'success');
+                document.getElementById('auth-section').classList.remove('hidden');
+            } catch (error) {
+                log(`Error initializing Firebase: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test backend authentication
+        function testBackendAuth() {
+            const phoneNumber = document.getElementById('phoneNumber').value.trim();
+            
+            if (!phoneNumber) {
+                log('Please enter a phone number', 'error');
+                return;
+            }
+            
+            log(`Testing backend authentication for ${phoneNumber}`, 'info');
+            
+            // Create a mock ID token for testing (in a real app, this would come from Firebase)
+            const mockIdToken = btoa(JSON.stringify({
+                phone_number: phoneNumber,
+                sub: "firebase-mock-uid-" + Math.random().toString(36).substring(2, 15),
+                iat: Math.floor(Date.now() / 1000),
+                exp: Math.floor(Date.now() / 1000) + 3600
+            }));
+            
+            // Call your backend API
+            fetch('http://localhost:8080/api/otp/firebase/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    phoneNumber: phoneNumber,
+                    verificationCode: "123456", // Mock verification code
+                    verificationId: "mock-verification-id"
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultElement = document.getElementById('result');
+                resultElement.innerHTML = `
+                    <div class="success">Backend test successful!</div>
+                    <p>Response:</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                resultElement.classList.remove('hidden');
+                
+                log('Backend test successful', 'success');
+                
+                // Now test with the mock token
+                testWithMockToken(mockIdToken, phoneNumber);
+            })
+            .catch(error => {
+                const resultElement = document.getElementById('result');
+                resultElement.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                resultElement.classList.remove('hidden');
+                
+                log(`Backend error: ${error.message}`, 'error');
+            });
+        }
+        
+        // Test with mock token
+        function testWithMockToken(mockIdToken, phoneNumber) {
+            fetch('http://localhost:8080/api/otp/firebase/verify-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    idToken: mockIdToken,
+                    authProvider: 'phone'
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`Server error: ${text}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                const resultElement = document.getElementById('result');
+                resultElement.innerHTML += `
+                    <div class="success">Token verification test:</div>
+                    <p>Response:</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                
+                log('Token verification test successful', 'success');
+            })
+            .catch(error => {
+                const resultElement = document.getElementById('result');
+                resultElement.innerHTML += `<div class="error">Token verification error: ${error.message}</div>`;
+                
+                log(`Token verification error: ${error.message}`, 'error');
+                
+                // If the token verification fails, this is expected in a test environment
+                // Let's provide instructions for the next steps
+                log('Note: Token verification is expected to fail in test mode since we\'re using a mock token', 'info');
+                log('To fully test with real tokens, you would need to implement this in a mobile app or use a different approach', 'info');
+            });
+        }
+    </script>
+</body>
+</html>

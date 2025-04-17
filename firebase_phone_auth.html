@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firebase Phone Authentication Test</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Firebase Phone Authentication Test</h1>
+    
+    <div class="container">
+        <div class="card">
+            <h2>Step 1: Configure Firebase</h2>
+            <p>Your Firebase project configuration:</p>
+            <pre id="firebaseConfig">
+{
+  apiKey: "AIzaSyDRGjgZqhLvLCzTbWDiLZbkKQgVoKGTfMw",
+  authDomain: "hoodjunction-a7605.firebaseapp.com",
+  projectId: "hoodjunction-a7605",
+  storageBucket: "hoodjunction-a7605.appspot.com",
+  messagingSenderId: "1015968456254",
+  appId: "1:1015968456254:web:1a4b6f8c9d6e7f8a5b4c3d"
+}
+            </pre>
+            <button id="initFirebase">Initialize Firebase</button>
+            <div id="initStatus"></div>
+        </div>
+        
+        <div class="card" id="phoneAuthCard">
+            <h2>Step 2: Phone Authentication</h2>
+            <div>
+                <label for="phoneNumber">Phone Number (with country code):</label>
+                <input type="text" id="phoneNumber" placeholder="+1234567890">
+            </div>
+            
+            <button id="sendCode">Send Verification Code</button>
+            
+            <div id="recaptchaContainer"></div>
+            
+            <div id="verificationSection" class="hidden">
+                <label for="verificationCode">Verification Code:</label>
+                <input type="text" id="verificationCode" placeholder="123456">
+                <button id="verifyCode">Verify Code</button>
+            </div>
+            
+            <div id="phoneAuthStatus"></div>
+        </div>
+        
+        <div class="card hidden" id="backendCard">
+            <h2>Step 3: Backend Integration</h2>
+            <h3>Firebase ID Token:</h3>
+            <pre id="idToken" style="height: 100px; overflow-y: auto;"></pre>
+            <button id="copyToken">Copy Token</button>
+            
+            <h3>Test Backend Endpoints:</h3>
+            <button id="testSendOtp">Test /otp/firebase/send</button>
+            <button id="testVerifyToken">Test /otp/firebase/verify-token</button>
+            <button id="testVerifyOtp">Test /otp/firebase/verify</button>
+            
+            <h3>Response:</h3>
+            <pre id="backendResponse" style="height: 200px; overflow-y: auto;"></pre>
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        let firebaseApp;
+        let confirmationResult;
+        let idToken = '';
+        const backendBaseUrl = 'http://localhost:8080/api';
+        
+        // Initialize Firebase
+        document.getElementById('initFirebase').addEventListener('click', () => {
+            try {
+                const firebaseConfigText = document.getElementById('firebaseConfig').textContent;
+                const firebaseConfig = eval(`(${firebaseConfigText})`);
+                
+                firebaseApp = firebase.initializeApp(firebaseConfig);
+                
+                document.getElementById('initStatus').innerHTML = 
+                    '<p style="color: green;">Firebase initialized successfully!</p>';
+                document.getElementById('phoneAuthCard').style.display = 'block';
+            } catch (error) {
+                document.getElementById('initStatus').innerHTML = 
+                    `<p style="color: red;">Error initializing Firebase: ${error.message}</p>`;
+            }
+        });
+        
+        // Send verification code
+        document.getElementById('sendCode').addEventListener('click', () => {
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const statusElement = document.getElementById('phoneAuthStatus');
+            
+            if (!phoneNumber) {
+                statusElement.innerHTML = '<p style="color: red;">Please enter a phone number</p>';
+                return;
+            }
+            
+            try {
+                // First, test our backend endpoint
+                fetch(`${backendBaseUrl}/otp/firebase/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phoneNumber: phoneNumber
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('backendResponse').textContent = JSON.stringify(data, null, 2);
+                    document.getElementById('backendCard').classList.remove('hidden');
+                    
+                    // Now proceed with Firebase phone auth
+                    const recaptchaContainer = document.getElementById('recaptchaContainer');
+                    const recaptchaVerifier = new firebase.auth.RecaptchaVerifier(recaptchaContainer, {
+                        'size': 'normal',
+                        'callback': (response) => {
+                            // reCAPTCHA solved, allow sending verification code
+                            statusElement.innerHTML = '<p style="color: blue;">reCAPTCHA verified, sending code...</p>';
+                        }
+                    });
+                    
+                    firebase.auth().signInWithPhoneNumber(phoneNumber, recaptchaVerifier)
+                        .then((result) => {
+                            confirmationResult = result;
+                            statusElement.innerHTML = '<p style="color: green;">Verification code sent!</p>';
+                            document.getElementById('verificationSection').classList.remove('hidden');
+                        })
+                        .catch((error) => {
+                            statusElement.innerHTML = `<p style="color: red;">Error sending code: ${error.message}</p>`;
+                            recaptchaVerifier.clear();
+                        });
+                })
+                .catch(error => {
+                    statusElement.innerHTML = `<p style="color: red;">Backend error: ${error.message}</p>`;
+                });
+            } catch (error) {
+                statusElement.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        });
+        
+        // Verify code
+        document.getElementById('verifyCode').addEventListener('click', () => {
+            const code = document.getElementById('verificationCode').value;
+            const statusElement = document.getElementById('phoneAuthStatus');
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            
+            if (!code) {
+                statusElement.innerHTML = '<p style="color: red;">Please enter verification code</p>';
+                return;
+            }
+            
+            if (!confirmationResult) {
+                statusElement.innerHTML = '<p style="color: red;">No verification in progress</p>';
+                return;
+            }
+            
+            // First test our mock verify endpoint
+            fetch(`${backendBaseUrl}/otp/firebase/verify`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    phoneNumber: phoneNumber,
+                    verificationCode: code,
+                    verificationId: 'test-verification-id'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('backendResponse').textContent = JSON.stringify(data, null, 2);
+                
+                // Now verify with Firebase
+                confirmationResult.confirm(code)
+                    .then((result) => {
+                        const user = result.user;
+                        statusElement.innerHTML = `<p style="color: green;">Phone verified! User ID: ${user.uid}</p>`;
+                        
+                        // Get ID token
+                        user.getIdToken(true)
+                            .then((token) => {
+                                idToken = token;
+                                document.getElementById('idToken').textContent = token;
+                                document.getElementById('backendCard').classList.remove('hidden');
+                            });
+                    })
+                    .catch((error) => {
+                        statusElement.innerHTML = `<p style="color: red;">Verification error: ${error.message}</p>`;
+                    });
+            })
+            .catch(error => {
+                statusElement.innerHTML = `<p style="color: red;">Backend error: ${error.message}</p>`;
+            });
+        });
+        
+        // Copy token
+        document.getElementById('copyToken').addEventListener('click', () => {
+            const tokenArea = document.getElementById('idToken');
+            const text = tokenArea.textContent;
+            
+            navigator.clipboard.writeText(text)
+                .then(() => {
+                    alert('Token copied to clipboard!');
+                })
+                .catch(err => {
+                    console.error('Failed to copy: ', err);
+                });
+        });
+        
+        // Test backend endpoints
+        document.getElementById('testSendOtp').addEventListener('click', () => {
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            
+            fetch(`${backendBaseUrl}/otp/firebase/send`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    phoneNumber: phoneNumber
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('backendResponse').textContent = JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                document.getElementById('backendResponse').textContent = `Error: ${error.message}`;
+            });
+        });
+        
+        document.getElementById('testVerifyToken').addEventListener('click', () => {
+            if (!idToken) {
+                document.getElementById('backendResponse').textContent = 'No ID token available. Please verify phone first.';
+                return;
+            }
+            
+            fetch(`${backendBaseUrl}/otp/firebase/verify-token`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    idToken: idToken,
+                    authProvider: 'phone'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('backendResponse').textContent = JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                document.getElementById('backendResponse').textContent = `Error: ${error.message}`;
+            });
+        });
+        
+        document.getElementById('testVerifyOtp').addEventListener('click', () => {
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const code = document.getElementById('verificationCode').value || '123456';
+            
+            fetch(`${backendBaseUrl}/otp/firebase/verify`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    phoneNumber: phoneNumber,
+                    verificationCode: code,
+                    verificationId: 'test-verification-id'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('backendResponse').textContent = JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                document.getElementById('backendResponse').textContent = `Error: ${error.message}`;
+            });
+        });
+    </script>
+</body>
+</html>

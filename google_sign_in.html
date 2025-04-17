@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firebase Auth Token Generator</title>
+    <script src="[https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>](https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>)
+    <script src="[https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>](https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>)
+</head>
+<body>
+    <h1>Firebase Auth Token Generator</h1>
+    
+    <button id="googleSignIn">Sign in with Google</button>
+    <div id="phoneAuth">
+        <input type="text" id="phoneNumber" placeholder="+1234567890">
+        <button id="sendCode">Send Code</button>
+        <div id="recaptcha-container"></div>
+        <input type="text" id="verificationCode" placeholder="Verification code">
+        <button id="verifyCode">Verify Code</button>
+    </div>
+    
+    <h3>Firebase ID Token:</h3>
+    <textarea id="idToken" rows="10" cols="50"></textarea>
+    <button id="copyToken">Copy Token</button>
+    
+    <script>
+        // Your Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDRGjgZqhLvLCzTbWDiLZbkKQgVoKGTfMw",
+            authDomain: "hoodjunction-a7605.firebaseapp.com",
+            projectId: "hoodjunction-a7605",
+            storageBucket: "hoodjunction-a7605.appspot.com",
+            messagingSenderId: "1015968456254",
+            appId: "1:1015968456254:web:1a4b6f8c9d6e7f8a5b4c3d"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // Google Sign-in
+        document.getElementById('googleSignIn').addEventListener('click', () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            firebase.auth().signInWithPopup(provider)
+                .then((result) => {
+                    getIdToken();
+                })
+                .catch((error) => {
+                    console.error("Error signing in with Google:", error);
+                });
+        });
+        
+        // Phone Auth
+        let confirmationResult;
+        document.getElementById('sendCode').addEventListener('click', () => {
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container');
+            
+            firebase.auth().signInWithPhoneNumber(phoneNumber, recaptchaVerifier)
+                .then((result) => {
+                    confirmationResult = result;
+                    alert('Verification code sent to your phone!');
+                })
+                .catch((error) => {
+                    console.error("Error sending verification code:", error);
+                    alert('Error: ' + error.message);
+                });
+        });
+        
+        document.getElementById('verifyCode').addEventListener('click', () => {
+            const code = document.getElementById('verificationCode').value;
+            
+            confirmationResult.confirm(code)
+                .then((result) => {
+                    getIdToken();
+                })
+                .catch((error) => {
+                    console.error("Error verifying code:", error);
+                    alert('Error: ' + error.message);
+                });
+        });
+        
+        // Get and display ID token
+        function getIdToken() {
+            firebase.auth().currentUser.getIdToken(true)
+                .then((idToken) => {
+                    document.getElementById('idToken').value = idToken;
+                })
+                .catch((error) => {
+                    console.error("Error getting ID token:", error);
+                });
+        }
+        
+        // Copy token to clipboard
+        document.getElementById('copyToken').addEventListener('click', () => {
+            const tokenArea = document.getElementById('idToken');
+            tokenArea.select();
+            document.execCommand('copy');
+            alert('Token copied to clipboard!');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Hood Junction - Firebase Phone Auth Test</title>
+    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth-compat.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #4285F4;
+            margin-top: 0;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        input, button, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #3367D6;
+        }
+        #recaptcha-container {
+            margin: 20px 0;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #4285F4;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .hidden {
+            display: none;
+        }
+        .steps {
+            counter-reset: step;
+            margin-bottom: 30px;
+        }
+        .step {
+            margin-bottom: 15px;
+            padding-left: 30px;
+            position: relative;
+        }
+        .step:before {
+            content: counter(step);
+            counter-increment: step;
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #4285F4;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 20px;
+            font-size: 12px;
+        }
+        .tab {
+            display: none;
+        }
+        .tab.active {
+            display: block;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            background: #f1f1f1;
+            border: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .tab-btn.active {
+            background: #4285F4;
+            color: white;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+        .success {
+            color: #28a745;
+        }
+        .error {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Firebase Phone Authentication Test</h1>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="openTab('setup')">1. Setup</button>
+            <button class="tab-btn" onclick="openTab('phone')">2. Phone Auth</button>
+            <button class="tab-btn" onclick="openTab('backend')">3. Backend Auth</button>
+        </div>
+        
+        <div id="setup" class="tab active">
+            <h2>Firebase Configuration</h2>
+            <div class="form-group">
+                <label for="apiKey">API Key:</label>
+                <input type="text" id="apiKey" placeholder="Enter Firebase API Key">
+            </div>
+            <div class="form-group">
+                <label for="authDomain">Auth Domain:</label>
+                <input type="text" id="authDomain" placeholder="Enter Firebase Auth Domain">
+            </div>
+            <div class="form-group">
+                <label for="projectId">Project ID:</label>
+                <input type="text" id="projectId" placeholder="Enter Firebase Project ID">
+            </div>
+            <button onclick="initializeFirebase()">Initialize Firebase</button>
+            <div id="setup-result" class="result hidden"></div>
+        </div>
+        
+        <div id="phone" class="tab">
+            <h2>Phone Authentication</h2>
+            <div class="form-group">
+                <label for="phoneNumber">Phone Number:</label>
+                <input type="tel" id="phoneNumber" placeholder="+919876543210">
+            </div>
+            <button onclick="sendOTP()">Send OTP</button>
+            <div id="recaptcha-container" class="form-group"></div>
+            
+            <div id="verification-section" class="hidden">
+                <div class="form-group">
+                    <label for="verificationCode">Verification Code:</label>
+                    <input type="text" id="verificationCode" placeholder="Enter OTP">
+                </div>
+                <button onclick="verifyOTP()">Verify OTP</button>
+            </div>
+            
+            <div id="phone-result" class="result hidden"></div>
+        </div>
+        
+        <div id="backend" class="tab">
+            <h2>Backend Authentication</h2>
+            <div class="form-group">
+                <label for="backendUrl">Backend API URL:</label>
+                <input type="text" id="backendUrl" value="http://localhost:8080/api" placeholder="Enter backend API URL">
+            </div>
+            <div class="form-group">
+                <label for="authEndpoint">Authentication Endpoint:</label>
+                <select id="authEndpoint">
+                    <option value="/otp/firebase/verify-token">Phone Auth (verify-token)</option>
+                    <option value="/auth/firebase/authenticate">Email/Google Auth (authenticate)</option>
+                </select>
+            </div>
+            <button onclick="authenticateWithBackend()">Authenticate with Backend</button>
+            <div id="backend-result" class="result hidden"></div>
+        </div>
+        
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        // Global variables
+        let firebaseConfig = null;
+        let firebaseApp = null;
+        let auth = null;
+        let verificationId = null;
+        let idToken = null;
+        
+        // Tab functionality
+        function openTab(tabName) {
+            const tabs = document.getElementsByClassName('tab');
+            for (let i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove('active');
+            }
+            
+            const tabBtns = document.getElementsByClassName('tab-btn');
+            for (let i = 0; i < tabBtns.length; i++) {
+                tabBtns[i].classList.remove('active');
+            }
+            
+            document.getElementById(tabName).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+        
+        // Logging function
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        // Initialize Firebase
+        function initializeFirebase() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const authDomain = document.getElementById('authDomain').value.trim();
+            const projectId = document.getElementById('projectId').value.trim();
+            
+            if (!apiKey || !authDomain || !projectId) {
+                log('Please fill in all Firebase configuration fields', 'error');
+                return;
+            }
+            
+            firebaseConfig = {
+                apiKey: apiKey,
+                authDomain: authDomain,
+                projectId: projectId,
+                storageBucket: `${projectId}.appspot.com`,
+                messagingSenderId: "1015968456254",
+                appId: "1:1015968456254:web:1a4b6f8c9d6e7f8a5b4c3d"
+            };
+            
+            try {
+                firebaseApp = firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                
+                const resultElement = document.getElementById('setup-result');
+                resultElement.innerHTML = '<div class="success">Firebase initialized successfully!</div>';
+                resultElement.classList.remove('hidden');
+                
+                // Setup reCAPTCHA verifier
+                window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+                    'size': 'normal',
+                    'callback': (response) => {
+                        log('reCAPTCHA solved, you can send OTP now', 'success');
+                    }
+                });
+                
+                window.recaptchaVerifier.render();
+                
+                // Move to next tab
+                setTimeout(() => {
+                    openTab('phone');
+                }, 1000);
+                
+                log('Firebase initialized successfully', 'success');
+            } catch (error) {
+                const resultElement = document.getElementById('setup-result');
+                resultElement.innerHTML = `<div class="error">Error initializing Firebase: ${error.message}</div>`;
+                resultElement.classList.remove('hidden');
+                
+                log(`Error initializing Firebase: ${error.message}`, 'error');
+            }
+        }
+        
+        // Send OTP
+        function sendOTP() {
+    const phoneNumber = document.getElementById('phoneNumber').value.trim();
+    
+    if (!phoneNumber) {
+        log('Please enter a phone number', 'error');
+        return;
+    }
+    
+    if (!auth) {
+        log('Firebase is not initialized. Go back to Setup tab.', 'error');
+        return;
+    }
+    
+    // Clear any existing reCAPTCHA
+    document.getElementById('recaptcha-container').innerHTML = '';
+    
+    try {
+        // Create a new invisible reCAPTCHA
+        window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+            'size': 'invisible',
+            'callback': (response) => {
+                log('reCAPTCHA verified', 'success');
+            }
+        });
+        
+        log('Sending OTP to ' + phoneNumber, 'info');
+        
+        // Send verification code
+        auth.signInWithPhoneNumber(phoneNumber, window.recaptchaVerifier)
+            .then((confirmationResult) => {
+                window.confirmationResult = confirmationResult;
+                verificationId = confirmationResult.verificationId;
+                
+                document.getElementById('verification-section').classList.remove('hidden');
+                
+                const resultElement = document.getElementById('phone-result');
+                resultElement.innerHTML = `
+                    <div class="success">OTP sent successfully to ${phoneNumber}</div>
+                    <p>Verification ID: ${verificationId}</p>
+                `;
+                resultElement.classList.remove('hidden');
+                
+                log(`OTP sent successfully to ${phoneNumber}`, 'success');
+            })
+            .catch((error) => {
+                const resultElement = document.getElementById('phone-result');
+                resultElement.innerHTML = `<div class="error">Error sending OTP: ${error.message}</div>`;
+                resultElement.classList.remove('hidden');
+                
+                log(`Error sending OTP: ${error.message}`, 'error');
+                console.error('Firebase error details:', error);
+            });
+    } catch (error) {
+        log(`Error setting up reCAPTCHA: ${error.message}`, 'error');
+        console.error('reCAPTCHA setup error:', error);
+    }
+}   // Verify OTP
+        function verifyOTP() {
+            const verificationCode = document.getElementById('verificationCode').value.trim();
+            
+            if (!verificationCode) {
+                log('Please enter verification code', 'error');
+                return;
+            }
+            
+            if (!window.confirmationResult) {
+                log('Please send OTP first', 'error');
+                return;
+            }
+            
+            window.confirmationResult.confirm(verificationCode)
+                .then((result) => {
+                    // User signed in successfully
+                    const user = result.user;
+                    
+                    // Get ID token
+                    return user.getIdToken();
+                })
+                .then((token) => {
+                    idToken = token;
+                    
+                    const resultElement = document.getElementById('phone-result');
+                    resultElement.innerHTML = `
+                        <div class="success">Phone number verified successfully!</div>
+                        <p>Firebase ID Token (first 50 chars):</p>
+                        <pre>${token.substring(0, 50)}...</pre>
+                    `;
+                    
+                    log('Phone number verified successfully', 'success');
+                    log('ID Token obtained', 'success');
+                    
+                    // Move to next tab
+                    setTimeout(() => {
+                        openTab('backend');
+                    }, 1000);
+                })
+                .catch((error) => {
+                    const resultElement = document.getElementById('phone-result');
+                    resultElement.innerHTML = `<div class="error">Error verifying OTP: ${error.message}</div>`;
+                    
+                    log(`Error verifying OTP: ${error.message}`, 'error');
+                });
+        }
+        
+        // Authenticate with backend
+        function authenticateWithBackend() {
+            if (!idToken) {
+                log('No ID token available. Please complete phone verification first.', 'error');
+                return;
+            }
+            
+            const backendUrl = document.getElementById('backendUrl').value.trim();
+            const endpoint = document.getElementById('authEndpoint').value;
+            
+            fetch(`${backendUrl}${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    idToken: idToken,
+                    authProvider: 'phone'
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(`Server error: ${JSON.stringify(data)}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                const resultElement = document.getElementById('backend-result');
+                resultElement.innerHTML = `
+                    <div class="success">Authentication successful!</div>
+                    <p>JWT Token (first 50 chars):</p>
+                    <pre>${data.token ? data.token.substring(0, 50) + '...' : 'No token returned'}</pre>
+                    <p>Response:</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                resultElement.classList.remove('hidden');
+                
+                log('Backend authentication successful', 'success');
+                log(`JWT Token: ${data.token ? data.token.substring(0, 20) + '...' : 'None'}`, 'success');
+            })
+            .catch(error => {
+                const resultElement = document.getElementById('backend-result');
+                resultElement.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                resultElement.classList.remove('hidden');
+                
+                log(`Backend authentication error: ${error.message}`, 'error');
+            });
+        }
+    </script>
+</body>
+</html>

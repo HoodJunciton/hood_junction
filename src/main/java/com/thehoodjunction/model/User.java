@@ -32,6 +32,12 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(unique = true)
+    private String phoneNumber;
+    
+    @Column(unique = true)
+    private String firebaseUserId;
+
     @Column(nullable = false)
     private String password;
 
@@ -41,11 +47,16 @@ public class User implements UserDetails {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role")
+    @Builder.Default
     private Set<String> roles = new HashSet<>();
 
+    @Builder.Default
     private boolean enabled = true;
+    @Builder.Default
     private boolean accountNonExpired = true;
+    @Builder.Default
     private boolean accountNonLocked = true;
+    @Builder.Default
     private boolean credentialsNonExpired = true;
 
     @Override
